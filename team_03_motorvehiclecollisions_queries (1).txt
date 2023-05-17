@@ -1,0 +1,81 @@
+[1]
+CREATE VIEW toyota_annual_crash_count AS
+SELECT YEAR(crash_date) AS year, COUNT(*) AS 'Number of Collisions'
+FROM collisions
+WHERE collision_id IN (SELECT collision_id 
+                                                FROM vehicle_collisions 
+                                                JOIN vehicles USING (unique_id)
+                        JOIN vehicle_make_info USING (make_id)
+                        WHERE make_id = 1)
+GROUP BY YEAR(crash_date) 
+ORDER BY YEAR(crash_date) DESC;
+
+
+
+
+[2]
+CREATE VIEW factor_count_info AS
+SELECT contributing_factor, COUNT(DISTINCT driver_id) as 'Drivers Crashed'
+FROM drivers
+JOIN vehicles USING (driver_id)
+JOIN factors USING (unique_id)
+GROUP BY contributing_factor
+HAVING COUNT(DISTINCT driver_id) > 1;
+
+
+[3]
+CREATE VIEW vehicle_type_and_damage_no_sedan AS 
+SELECT vehicle_collisions.unique_id AS unique_id, 
+                collisions.collision_id AS collision_id,
+        vehicle_type.type_name AS type_name, 
+        vehicles.vehicle_model AS vehicle_model,
+        vehicles.vehicle_year AS vehicle_year,
+        vehicle_collisions.vehicle_damage AS vehicle_damage 
+        FROM (((collisions 
+    JOIN vehicle_collisions ON((collisions.collision_id = vehicle_collisions.collision_id))) 
+                JOIN vehicles on((vehicle_collisions.unique_id = vehicles.unique_id))) 
+                JOIN vehicle_type on((vehicles.vehicle_type_id = vehicle_type.vehicle_type_id))) 
+                WHERE (vehicle_type.type_name <> 'Sedan');
+
+
+
+
+
+
+[4]
+CREATE VIEW gender_collision_evening AS 
+SELECT drivers.driver_sex AS 'Driver Sex',
+                COUNT(DISTINCT vehicle_collisions.collision_id) AS 'Collision Count' 
+        FROM (((
+                drivers JOIN vehicles on((drivers.driver_id = vehicles.driver_id))) 
+                JOIN vehicle_collisions ON((vehicles.unique_id = vehicle_collisions.unique_id))) 
+                        JOIN collisions ON((vehicle_collisions.collision_id = collisions.collision_id))) 
+                WHERE (CAST(collisions.crash_time as time) > '18:00:00') 
+                GROUP BY drivers.driver_sex;
+
+
+
+
+[5]
+USE motorvehiclecollisions;
+CREATE VIEW damage_count AS
+SELECT vehicle_damage AS 'Damage Type', COUNT(DISTINCT collision_id) AS 'Vehicles Damaged'
+FROM vehicle_collisions
+GROUP BY vehicle_damage;
+
+[6]
+CREATE VIEW crash_by_month AS 
+SELECT DATE_FORMAT(collisions.crash_date,'%M') AS 'Month of Crash',
+COUNT(DATE_FORMAT(collisions.crash_date,'%M')) AS '# of Crashes' 
+FROM collisions GROUP BY DATE_FORMAT(collisions.crash_date,'%M') ;
+
+[7]
+CREATE VIEW pre_2018_rear_crashes AS 
+SELECT vehicles.vehicle_year AS 'Vehicle Year',
+		vehicle_make_info.vehicle_make_name AS 'Make',
+        vehicle_collisions.vehicle_damage AS 'Damage Location' 
+	FROM ((vehicle_collisions JOIN vehicles ON((vehicle_collisions.unique_id = vehicles.unique_id))) 
+	JOIN vehicle_make_info ON ((vehicles.make_id = vehicle_make_info.make_id))) 
+	WHERE ((vehicle_collisions.vehicle_damage LIKE '%Rear%') 
+    OR (vehicle_collisions.vehicle_damage LIKE '%Back%')) 
+    ORDER BY vehicles.vehicle_year;
